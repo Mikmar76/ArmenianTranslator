@@ -9,8 +9,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs microphone access for voice translation",
-        "NSSpeechRecognitionUsageDescription": "This app needs speech recognition for voice translation"
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone for voice translation.",
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition for voice translation."
       }
     },
     "android": {
@@ -22,7 +22,8 @@
       },
       "permissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.mikmar.ArmenianTranslator"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,6 +36,11 @@
           "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to use speech recognition for voice translation."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "998282b2-c116-4ecc-8645-c5c69b081146"
+      }
+    }
   }
 }

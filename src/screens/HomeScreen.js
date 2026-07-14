@@ -1,70 +1,36 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Alert, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform,
 } from 'react-native';
 import * as Speech from 'expo-speech';
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
 import { LANGUAGES, LANGUAGE_PAIRS } from '../constants/languages';
 import { translateText } from '../services/translateService';
 
 export default function HomeScreen() {
   const [langPair, setLangPair] = useState('hy_ru');
-  const [isListening, setIsListening] = useState(false);
-  const [recognizedText, setRecognizedText] = useState('');
+  const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
-
-  const transcriptRef = useRef('');
-  const isProcessingRef = useRef(false);
 
   const pair = LANGUAGE_PAIRS[langPair];
   const sourceLang = LANGUAGES[pair.source];
   const targetLang = LANGUAGES[pair.target];
 
-  useSpeechRecognitionEvent('start', () => {
-    setIsListening(true);
-    setRecognizedText('');
+  const toggleLangPair = useCallback(() => {
+    Speech.stop();
+    setLangPair(prev => (prev === 'hy_ru' ? 'ru_hy' : 'hy_ru'));
+    setInputText('');
     setTranslatedText('');
-    transcriptRef.current = '';
-  });
+  }, []);
 
-  useSpeechRecognitionEvent('end', () => {
-    setIsListening(false);
-  });
+  const handleTranslate = useCallback(async () => {
+    if (!inputText.trim()) return;
 
-  useSpeechRecognitionEvent('result', (event) => {
-    if (event.results && event.results.length > 0) {
-      const text = event.results[0].transcript;
-      transcriptRef.current = text;
-      setRecognizedText(text);
-
-      if (event.isFinal && text) {
-        processTranslation(text);
-      }
-    }
-  });
-
-  useSpeechRecognitionEvent('error', (event) => {
-    setIsListening(false);
-    if (event.error !== 'no-speech' && event.error !== 'aborted') {
-      Alert.alert('Recognition Error', event.message || event.error);
-    }
-  });
-
-  const processTranslation = async (text) => {
-    if (!text || text.trim().length === 0 || isProcessingRef.current) return;
-
-    isProcessingRef.current = true;
     setIsTranslating(true);
-
     try {
-      const result = await translateText(text.trim(), pair.source, pair.target);
+      const result = await translateText(inputText.trim(), pair.source, pair.target);
       setTranslatedText(result);
-
       if (autoSpeak && result) {
         Speech.speak(result, { language: targetLang.ttsLocale });
       }
@@ -72,63 +38,20 @@ export default function HomeScreen() {
       Alert.alert('Translation Error', error.message);
     } finally {
       setIsTranslating(false);
-      isProcessingRef.current = false;
     }
-  };
+  }, [inputText, pair, autoSpeak, targetLang]);
 
-  const toggleLangPair = useCallback(() => {
-    if (isListening) return;
-    Speech.stop();
-    ExpoSpeechRecognitionModule.abort();
-    setLangPair(prev => (prev === 'hy_ru' ? 'ru_hy' : 'hy_ru'));
-    setRecognizedText('');
-    setTranslatedText('');
-  }, [isListening]);
-
-  const startListening = useCallback(async () => {
-    try {
-      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert('Permission Denied', 'Microphone permission is required for voice translation.');
-        return;
-      }
-      Speech.stop();
-      ExpoSpeechRecognitionModule.start({
-        lang: sourceLang.speechLocale,
-        interimResults: true,
-        continuous: false,
-      });
-    } catch (error) {
-      Alert.alert('Error', `Failed to start: ${error.message}`);
+  const speakSource = useCallback(() => {
+    if (inputText.trim()) {
+      Speech.speak(inputText, { language: sourceLang.ttsLocale });
     }
-  }, [sourceLang]);
+  }, [inputText, sourceLang]);
 
-  const stopListening = useCallback(async () => {
-    try {
-      ExpoSpeechRecognitionModule.stop();
-    } catch (_) {}
-  }, []);
-
-  const handleMicPress = useCallback(() => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
+  const speakTarget = useCallback(() => {
+    if (translatedText.trim()) {
+      Speech.speak(translatedText, { language: targetLang.ttsLocale });
     }
-  }, [isListening, startListening, stopListening]);
-
-  const handleMicRelease = useCallback(() => {
-    if (isListening) {
-      stopListening();
-    }
-  }, [isListening, stopListening]);
-
-  useEffect(() => {
-    return () => {
-      Speech.stop();
-      ExpoSpeechRecognitionModule.abort();
-    };
-  }, []);
+  }, [translatedText, targetLang]);
 
   return (
     <View style={styles.container}>
@@ -137,40 +60,56 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>Armenian ↔ Russian</Text>
       </View>
 
-      <TouchableOpacity style={styles.langToggle} onPress={toggleLangPair} disabled={isListening}>
+      <TouchableOpacity style={styles.langToggle} onPress={toggleLangPair}>
         <Text style={styles.langToggleText}>{pair.label}</Text>
         <Text style={styles.langToggleIcon}>⇄</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setAutoSpeak(!autoSpeak)} style={styles.autoSpeakBtn}>
-        <Text style={styles.autoSpeakText}>Auto-speak: {autoSpeak ? 'ON' : 'OFF'}</Text>
-      </TouchableOpacity>
-
-      <View style={styles.translationBox}>
-        <Text style={styles.langLabel}>{sourceLang.nativeName} (recognized)</Text>
-        <View style={styles.textBox}>
-          <Text style={styles.textContent}>{recognizedText || 'Waiting for speech...'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.translationBox}>
-        <Text style={styles.langLabel}>{targetLang.nativeName} (translation)</Text>
-        <View style={styles.textBox}>
-          <Text style={styles.textContent}>
-            {isTranslating ? 'Translating...' : translatedText || 'Translation will appear here'}
-          </Text>
-        </View>
+      <View style={styles.inputSection}>
+        <Text style={styles.langLabel}>{sourceLang.nativeName}</Text>
+        <TextInput
+          style={styles.textInput}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder={`Type in ${sourceLang.name}...`}
+          multiline
+          textAlignVertical="top"
+        />
+        <TouchableOpacity style={styles.speakBtn} onPress={speakSource}>
+          <Text style={styles.speakBtnText}>🔊 Speak</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[styles.micButton, isListening && styles.micButtonActive]}
-        onPressIn={handleMicPress}
-        onPressOut={handleMicRelease}
-        activeOpacity={0.7}
+        style={styles.translateBtn}
+        onPress={handleTranslate}
+        disabled={isTranslating || !inputText.trim()}
       >
-        <Text style={styles.micIcon}>{isListening ? '🔴' : '🎤'}</Text>
-        <Text style={styles.micLabel}>
-          {isListening ? 'Listening...' : isTranslating ? 'Translating...' : 'Tap & hold to speak'}
+        <Text style={styles.translateBtnText}>
+          {isTranslating ? 'Translating...' : 'Translate ↓'}
+        </Text>
+      </TouchableOpacity>
+
+      <View style={styles.outputSection}>
+        <Text style={styles.langLabel}>{targetLang.nativeName}</Text>
+        <View style={styles.textOutput}>
+          <Text style={styles.outputText}>
+            {translatedText || 'Translation will appear here'}
+          </Text>
+        </View>
+        {translatedText ? (
+          <TouchableOpacity style={styles.speakBtn} onPress={speakTarget}>
+            <Text style={styles.speakBtnText}>🔊 Speak</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <TouchableOpacity
+        style={styles.autoSpeakBtn}
+        onPress={() => setAutoSpeak(!autoSpeak)}
+      >
+        <Text style={styles.autoSpeakText}>
+          Auto-speak: {autoSpeak ? 'ON' : 'OFF'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -206,7 +145,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -223,25 +162,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: '#6C63FF',
   },
-  autoSpeakBtn: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  autoSpeakText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  translationBox: {
+  inputSection: {
     marginBottom: 12,
   },
   langLabel: {
@@ -252,7 +173,52 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  textBox: {
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    minHeight: 100,
+    fontSize: 16,
+    color: '#1A1A2E',
+    lineHeight: 22,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  speakBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginTop: 6,
+  },
+  speakBtnText: {
+    fontSize: 14,
+    color: '#6C63FF',
+    fontWeight: '600',
+  },
+  translateBtn: {
+    backgroundColor: '#6C63FF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginVertical: 12,
+    elevation: 2,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  translateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  outputSection: {
+    marginBottom: 12,
+  },
+  textOutput: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
@@ -263,37 +229,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
   },
-  textContent: {
+  outputText: {
     fontSize: 16,
     color: '#1A1A2E',
     lineHeight: 22,
   },
-  micButton: {
+  autoSpeakBtn: {
     alignSelf: 'center',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#6C63FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    elevation: 4,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    elevation: 1,
   },
-  micButtonActive: {
-    backgroundColor: '#FF4757',
-    transform: [{ scale: 1.1 }],
-  },
-  micIcon: {
-    fontSize: 36,
-  },
-  micLabel: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    marginTop: 4,
-    fontWeight: '600',
+  autoSpeakText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 });

@@ -26,7 +26,6 @@ export default function HomeScreen() {
 
   const handleTranslate = useCallback(async () => {
     if (!inputText.trim()) return;
-
     setIsTranslating(true);
     try {
       const result = await translateText(inputText.trim(), pair.source, pair.target);
@@ -42,15 +41,11 @@ export default function HomeScreen() {
   }, [inputText, pair, autoSpeak, targetLang]);
 
   const speakSource = useCallback(() => {
-    if (inputText.trim()) {
-      Speech.speak(inputText, { language: sourceLang.ttsLocale });
-    }
+    if (inputText.trim()) Speech.speak(inputText, { language: sourceLang.ttsLocale });
   }, [inputText, sourceLang]);
 
   const speakTarget = useCallback(() => {
-    if (translatedText.trim()) {
-      Speech.speak(translatedText, { language: targetLang.ttsLocale });
-    }
+    if (translatedText.trim()) Speech.speak(translatedText, { language: targetLang.ttsLocale });
   }, [translatedText, targetLang]);
 
   return (
@@ -104,13 +99,8 @@ export default function HomeScreen() {
         ) : null}
       </View>
 
-      <TouchableOpacity
-        style={styles.autoSpeakBtn}
-        onPress={() => setAutoSpeak(!autoSpeak)}
-      >
-        <Text style={styles.autoSpeakText}>
-          Auto-speak: {autoSpeak ? 'ON' : 'OFF'}
-        </Text>
+      <TouchableOpacity style={styles.autoSpeakBtn} onPress={() => setAutoSpeak(!autoSpeak)}>
+        <Text style={styles.autoSpeakText}>Auto-speak: {autoSpeak ? 'ON' : 'OFF'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -123,128 +113,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1A1A2E',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
+  header: { alignItems: 'center', marginBottom: 16 },
+  title: { fontSize: 28, fontWeight: '800', color: '#1A1A2E' },
+  subtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },
   langToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', paddingVertical: 14, paddingHorizontal: 20,
+    borderRadius: 12, marginBottom: 16,
+    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 4,
   },
-  langToggleText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A2E',
-  },
-  langToggleIcon: {
-    fontSize: 20,
-    marginLeft: 10,
-    color: '#6C63FF',
-  },
-  inputSection: {
-    marginBottom: 12,
-  },
+  langToggleText: { fontSize: 18, fontWeight: '600', color: '#1A1A2E' },
+  langToggleIcon: { fontSize: 20, marginLeft: 10, color: '#6C63FF' },
+  inputSection: { marginBottom: 12 },
   langLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4,
+    textTransform: 'uppercase', letterSpacing: 1,
   },
   textInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    minHeight: 100,
-    fontSize: 16,
-    color: '#1A1A2E',
-    lineHeight: 22,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
+    minHeight: 100, fontSize: 16, color: '#1A1A2E', lineHeight: 22,
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2,
   },
-  speakBtn: {
-    alignSelf: 'flex-end',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    marginTop: 6,
-  },
-  speakBtnText: {
-    fontSize: 14,
-    color: '#6C63FF',
-    fontWeight: '600',
-  },
+  speakBtn: { alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 14, marginTop: 6 },
+  speakBtnText: { fontSize: 14, color: '#6C63FF', fontWeight: '600' },
   translateBtn: {
-    backgroundColor: '#6C63FF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginVertical: 12,
-    elevation: 2,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    backgroundColor: '#6C63FF', paddingVertical: 14, borderRadius: 12,
+    alignItems: 'center', marginVertical: 12,
+    elevation: 2, shadowColor: '#6C63FF', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2, shadowRadius: 4,
   },
-  translateBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  outputSection: {
-    marginBottom: 12,
-  },
+  translateBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  outputSection: { marginBottom: 12 },
   textOutput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    minHeight: 70,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
+    minHeight: 70, fontSize: 16, color: '#1A1A2E', lineHeight: 22,
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2,
   },
-  outputText: {
-    fontSize: 16,
-    color: '#1A1A2E',
-    lineHeight: 22,
-  },
+  outputText: { fontSize: 16, color: '#1A1A2E', lineHeight: 22 },
   autoSpeakBtn: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    elevation: 1,
+    alignSelf: 'center', backgroundColor: '#FFFFFF', paddingVertical: 8,
+    paddingHorizontal: 16, borderRadius: 8, elevation: 1,
   },
-  autoSpeakText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
+  autoSpeakText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
 });

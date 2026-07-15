@@ -2,9 +2,21 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform,
 } from 'react-native';
-import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 import { LANGUAGES, LANGUAGE_PAIRS } from '../constants/languages';
 import { translateText } from '../services/translateService';
+
+async function speakTTS(text, lang) {
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=gtx` },
+      { shouldPlay: true }
+    );
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.didJustFinish) sound.unloadAsync();
+    });
+  } catch (_) {}
+}
 
 export default function HomeScreen() {
   const [langPair, setLangPair] = useState('hy_ru');
@@ -18,7 +30,6 @@ export default function HomeScreen() {
   const targetLang = LANGUAGES[pair.target];
 
   const toggleLangPair = useCallback(() => {
-    Speech.stop();
     setLangPair(prev => (prev === 'hy_ru' ? 'ru_hy' : 'hy_ru'));
     setInputText('');
     setTranslatedText('');
@@ -30,23 +41,21 @@ export default function HomeScreen() {
     try {
       const result = await translateText(inputText.trim(), pair.source, pair.target);
       setTranslatedText(result);
-      if (autoSpeak && result) {
-        Speech.speak(result, { language: targetLang.ttsLocale });
-      }
+      if (autoSpeak && result) speakTTS(result, pair.target);
     } catch (error) {
       Alert.alert('Translation Error', error.message);
     } finally {
       setIsTranslating(false);
     }
-  }, [inputText, pair, autoSpeak, targetLang]);
+  }, [inputText, pair, autoSpeak]);
 
   const speakSource = useCallback(() => {
-    if (inputText.trim()) Speech.speak(inputText, { language: sourceLang.ttsLocale });
-  }, [inputText, sourceLang]);
+    if (inputText.trim()) speakTTS(inputText, pair.source);
+  }, [inputText, pair]);
 
   const speakTarget = useCallback(() => {
-    if (translatedText.trim()) Speech.speak(translatedText, { language: targetLang.ttsLocale });
-  }, [translatedText, targetLang]);
+    if (translatedText.trim()) speakTTS(translatedText, pair.target);
+  }, [translatedText, pair]);
 
   return (
     <View style={styles.container}>
@@ -108,10 +117,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    flex: 1, backgroundColor: '#F5F7FA',
+    paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: { alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A2E' },
@@ -147,8 +154,7 @@ const styles = StyleSheet.create({
   translateBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   outputSection: { marginBottom: 12 },
   textOutput: {
-    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
-    minHeight: 70, fontSize: 16, color: '#1A1A2E', lineHeight: 22,
+    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, minHeight: 70,
     elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 2,
   },

@@ -1,18 +1,21 @@
-const MYMEMORY_API = 'https://api.mymemory.translated.net/get';
+const GOOGLE_API = 'https://translate.googleapis.com/translate_a/single';
 
 export async function translateText(text, sourceLang, targetLang) {
   if (!text || text.trim().length === 0) return '';
 
-  const url = `${MYMEMORY_API}?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+  const params = new URLSearchParams({
+    client: 'gtx',
+    sl: sourceLang,
+    tl: targetLang,
+    dt: 't',
+    q: text,
+  });
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(`${GOOGLE_API}?${params}`);
     const data = await response.json();
-
-    if (data.responseStatus === 200 && data.responseData) {
-      return data.responseData.translatedText;
-    }
-    throw new Error(data.responseDetails || 'Translation failed');
+    const translated = data[0].map(item => item[0]).join('');
+    return translated;
   } catch (error) {
     throw new Error(`Translation error: ${error.message}`);
   }

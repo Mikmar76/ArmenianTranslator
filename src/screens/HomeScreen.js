@@ -2,20 +2,19 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
+import * as WebBrowser from 'expo-web-browser';
 import { LANGUAGES, LANGUAGE_PAIRS } from '../constants/languages';
 import { translateText } from '../services/translateService';
 
-async function speakTTS(text, lang) {
-  try {
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=gtx` },
-      { shouldPlay: true }
+function speakText(text, lang) {
+  if (lang === 'ru') {
+    Speech.speak(text, { language: 'ru' });
+  } else {
+    WebBrowser.openBrowserAsync(
+      `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=hy&client=gtx`
     );
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.didJustFinish) sound.unloadAsync();
-    });
-  } catch (_) {}
+  }
 }
 
 export default function HomeScreen() {
@@ -30,6 +29,7 @@ export default function HomeScreen() {
   const targetLang = LANGUAGES[pair.target];
 
   const toggleLangPair = useCallback(() => {
+    Speech.stop();
     setLangPair(prev => (prev === 'hy_ru' ? 'ru_hy' : 'hy_ru'));
     setInputText('');
     setTranslatedText('');
@@ -41,7 +41,7 @@ export default function HomeScreen() {
     try {
       const result = await translateText(inputText.trim(), pair.source, pair.target);
       setTranslatedText(result);
-      if (autoSpeak && result) speakTTS(result, pair.target);
+      if (autoSpeak && result) speakText(result, pair.target);
     } catch (error) {
       Alert.alert('Translation Error', error.message);
     } finally {
@@ -50,11 +50,11 @@ export default function HomeScreen() {
   }, [inputText, pair, autoSpeak]);
 
   const speakSource = useCallback(() => {
-    if (inputText.trim()) speakTTS(inputText, pair.source);
+    if (inputText.trim()) speakText(inputText, pair.source);
   }, [inputText, pair]);
 
   const speakTarget = useCallback(() => {
-    if (translatedText.trim()) speakTTS(translatedText, pair.target);
+    if (translatedText.trim()) speakText(translatedText, pair.target);
   }, [translatedText, pair]);
 
   return (

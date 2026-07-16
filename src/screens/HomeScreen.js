@@ -1,21 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform,
 } from 'react-native';
 import * as Speech from 'expo-speech';
-import * as WebBrowser from 'expo-web-browser';
+import { WebView } from 'react-native-webview';
 import { LANGUAGES, LANGUAGE_PAIRS } from '../constants/languages';
 import { translateText } from '../services/translateService';
 
-function speakText(text, lang) {
-  if (lang === 'ru') {
-    Speech.speak(text, { language: 'ru' });
-  } else {
-    WebBrowser.openBrowserAsync(
-      `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=hy&client=gtx`
-    );
-  }
-}
+let webviewRef = null;
 
 export default function HomeScreen() {
   const [langPair, setLangPair] = useState('hy_ru');
@@ -41,7 +33,13 @@ export default function HomeScreen() {
     try {
       const result = await translateText(inputText.trim(), pair.source, pair.target);
       setTranslatedText(result);
-      if (autoSpeak && result) speakText(result, pair.target);
+      if (autoSpeak && result) {
+        if (pair.target === 'ru') {
+          Speech.speak(result, { language: 'ru' });
+        } else {
+          speakViaWebSpeech(result);
+        }
+      }
     } catch (error) {
       Alert.alert('Translation Error', error.message);
     } finally {
@@ -50,15 +48,31 @@ export default function HomeScreen() {
   }, [inputText, pair, autoSpeak]);
 
   const speakSource = useCallback(() => {
-    if (inputText.trim()) speakText(inputText, pair.source);
+    if (!inputText.trim()) return;
+    if (pair.source === 'ru') {
+      Speech.speak(inputText, { language: 'ru' });
+    } else {
+      speakViaWebSpeech(inputText);
+    }
   }, [inputText, pair]);
 
   const speakTarget = useCallback(() => {
-    if (translatedText.trim()) speakText(translatedText, pair.target);
+    if (!translatedText.trim()) return;
+    if (pair.target === 'ru') {
+      Speech.speak(translatedText, { language: 'ru' });
+    } else {
+      speakViaWebSpeech(translatedText);
+    }
   }, [translatedText, pair]);
 
   return (
     <View style={styles.container}>
+      <WebView
+        style={styles.hiddenWebView}
+        originWhitelist={['*']}
+        source={{ html: '<html><body></body></html>' }}
+        ref={(ref) => { webviewRef = ref; }}
+      />
       <View style={styles.header}>
         <Text style={styles.title}>Voice Translator</Text>
         <Text style={styles.subtitle}>Armenian ↔ Russian</Text>
@@ -115,11 +129,25 @@ export default function HomeScreen() {
   );
 }
 
+function speakViaWebSpeech(text) {
+  const safeText = text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  webviewRef?.injectJavaScript(`
+    (function() {
+      var u = new SpeechSynthesisUtterance('${safeText}');
+      u.lang = 'hy';
+      u.rate = 0.9;
+      speechSynthesis.speak(u);
+    })();
+    true;
+  `);
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1, backgroundColor: '#F5F7FA',
     paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
+  hiddenWebView: { height: 0, width: 0, opacity: 0 },
   header: { alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A2E' },
   subtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },

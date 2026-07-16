@@ -1,13 +1,27 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform,
 } from 'react-native';
 import * as Speech from 'expo-speech';
-import { WebView } from 'react-native-webview';
+import { Audio } from 'expo-av';
 import { LANGUAGES, LANGUAGE_PAIRS } from '../constants/languages';
 import { translateText } from '../services/translateService';
 
-let webviewRef = null;
+async function speakArmenian(text) {
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      {
+        uri: `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=hy&client=gtx`,
+      },
+      { shouldPlay: true }
+    );
+    sound.setOnPlaybackStatusUpdate((s) => {
+      if (s.didJustFinish) sound.unloadAsync();
+    });
+  } catch (e) {
+    Alert.alert('TTS Error', 'Could not play Armenian audio. Make sure you have internet.');
+  }
+}
 
 export default function HomeScreen() {
   const [langPair, setLangPair] = useState('hy_ru');
@@ -37,7 +51,7 @@ export default function HomeScreen() {
         if (pair.target === 'ru') {
           Speech.speak(result, { language: 'ru' });
         } else {
-          speakViaWebSpeech(result);
+          speakArmenian(result);
         }
       }
     } catch (error) {
@@ -52,7 +66,7 @@ export default function HomeScreen() {
     if (pair.source === 'ru') {
       Speech.speak(inputText, { language: 'ru' });
     } else {
-      speakViaWebSpeech(inputText);
+      speakArmenian(inputText);
     }
   }, [inputText, pair]);
 
@@ -61,18 +75,12 @@ export default function HomeScreen() {
     if (pair.target === 'ru') {
       Speech.speak(translatedText, { language: 'ru' });
     } else {
-      speakViaWebSpeech(translatedText);
+      speakArmenian(translatedText);
     }
   }, [translatedText, pair]);
 
   return (
     <View style={styles.container}>
-      <WebView
-        style={styles.hiddenWebView}
-        originWhitelist={['*']}
-        source={{ html: '<html><body></body></html>' }}
-        ref={(ref) => { webviewRef = ref; }}
-      />
       <View style={styles.header}>
         <Text style={styles.title}>Voice Translator</Text>
         <Text style={styles.subtitle}>Armenian ↔ Russian</Text>
@@ -129,25 +137,11 @@ export default function HomeScreen() {
   );
 }
 
-function speakViaWebSpeech(text) {
-  const safeText = text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  webviewRef?.injectJavaScript(`
-    (function() {
-      var u = new SpeechSynthesisUtterance('${safeText}');
-      u.lang = 'hy';
-      u.rate = 0.9;
-      speechSynthesis.speak(u);
-    })();
-    true;
-  `);
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1, backgroundColor: '#F5F7FA',
     paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-  hiddenWebView: { height: 0, width: 0, opacity: 0 },
   header: { alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A2E' },
   subtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },
